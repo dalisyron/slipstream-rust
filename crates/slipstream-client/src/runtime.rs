@@ -13,7 +13,7 @@ use crate::dns::{
 };
 use crate::error::ClientError;
 use crate::pacing::{cwnd_target_polls, inflight_packet_estimate};
-use crate::pinning::configure_pinned_certificate;
+use crate::pinning::{configure_pinned_certificate, configure_pinned_certificate_hash};
 use crate::streams::{
     acceptor::ClientAcceptor, client_callback, drain_commands, drain_stream_data, handle_command,
     ClientState, Command,
@@ -185,7 +185,9 @@ pub async fn run_client(config: &ClientConfig<'_>) -> Result<i32, ClientError> {
         unsafe {
             slipstream_set_default_path_mode(resolver_mode_to_c(resolvers[0].mode));
         }
-        if let Some(cert) = config.cert {
+        if let Some(cert_hash) = config.cert_sha256 {
+            configure_pinned_certificate_hash(quic, cert_hash).map_err(ClientError::new)?;
+        } else if let Some(cert) = config.cert {
             configure_pinned_certificate(quic, cert).map_err(ClientError::new)?;
         }
         let mut server_storage = resolvers[0].storage;
